@@ -10,11 +10,17 @@ import json
 import pickle
 
 
+
+
 try:
     with open("data.pickle", "rb") as file:
         words, labels, training, output = pickle.load(file)
 
+    with open("intents.json") as file:
+        intents = json.load(file)["intents"]
+
 except:
+
     with open("intents.json") as file:
         intents = json.load(file)["intents"]
 
@@ -77,3 +83,38 @@ except:
     model.fit(training, output, n_epoch=5000, batch_size=8, show_metric=True)
     model.save("model.tflearn")
 
+def to_bag(msg, words):
+    bag = [0 for _ in range(len(words))]
+    wordss = nltk.word_tokenize(msg)
+    wordss = [stemmer.stem(word.lower()) for word in wordss]
+
+    for si in wordss:
+        for i, w in enumerate(words):
+            if w == si:
+                bag[i] = 1
+
+    return np.array(bag)
+
+
+def pick_answer(tag, intents):
+    for intent in intents:
+        if intent["tag"] == tag:
+            return random.choice(intent["responses"])
+
+def chat():
+    global intents
+    print("Start talking!")
+    while True:
+        inp = input("You: ")
+        if inp.lower() == "quit":
+            break
+
+        msg = to_bag(inp, words)
+        output = model.predict([msg])[0]
+        if max(output) >= 0.7:
+            tag = labels[list(output).index(max(output))]
+            print(f"Bot: {pick_answer(tag, intents)}")
+        else:
+            print("Bot: I don't understand")
+
+chat()
